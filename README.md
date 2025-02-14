@@ -1,2 +1,2 @@
-# chess_engine
-A simple chess engine
+# text_editor
+A simple text editor
