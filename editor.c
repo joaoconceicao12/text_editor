@@ -31,9 +31,10 @@ struct editorConfig{
   int cx, cy;
   int screen_rows;
   int screen_cols;
+  int rowoff;
   struct termios orig_termios;
   int numrows;
-  erow row;
+  erow *row;
 };
 
 struct editorConfig E;
@@ -168,6 +169,19 @@ int getWindowSize(int* rows, int* cols){
   }
 }
 
+/*** row operations ***/
+
+void editorAppendRow(char *s, size_t len){
+  E.row = realloc(E.row, sizeof(erow) * (E.numrows + 1));
+
+  int at = E.numrows;
+  E.row[at].size = len;
+  E.row[at].chars = malloc(len + 1);
+  memcpy(E.row[at].chars, s, len);
+  E.row[at].chars[len] = '\0';
+  E.numrows++;
+}
+
 /*** file i/o ***/
 
 void editorOpen(char *filename){
@@ -177,17 +191,11 @@ void editorOpen(char *filename){
   char *line = NULL;
   size_t line_cap = 0;
   ssize_t linelen;
-  linelen = getline(&line, &line_cap, fp);
-  if(linelen != -1){
-    //tirar \n e \r
+  while((linelen = getline(&line, &line_cap, fp)) != -1){
     while(linelen > 0 && (line[linelen - 1] == '\n' || line[linelen - 1] == '\r')){
       linelen--;
     }
-    E.row.size = linelen;
-    E.row.chars = malloc(linelen + 1);
-    memcpy(E.row.chars, line, linelen);
-    E.row.chars[linelen] = '\0';
-    E.numrows = 1;
+    editorAppendRow(line, linelen);
   }
   free(line);
   fclose(fp);
@@ -235,10 +243,21 @@ void abFree(struct abuf *ab){
 
 /*** output ***/
 
+void editorScroll(){
+  if(E.cy < E.rowoff){
+    E.rowoff = E.cy;
+  }
+
+  if(E.cy >= E.rowoff + E.screen_rows){
+    E.rowoff = E.cy - E.screen_rows + 1;
+  }
+}
+
 void editorDrawRows(struct abuf *ab) {
     int y;
     for (y = 0; y < E.screen_rows; y++) {
-      if(y >= E.numrows){
+      int filerow = y + E.rowoff;
+      if(filerow >= E.numrows){
         if (E.numrows == 0 && y == E.screen_rows / 3) {
           char welcome[80];
           int welcomelen = snprintf(welcome, sizeof(welcome),
@@ -255,9 +274,9 @@ void editorDrawRows(struct abuf *ab) {
           abAppend(ab, "~", 1);
         }
       }else{
-        int len = E.row.size;
+        int len = E.row[filerow].size;
         if(len > E.screen_cols) len = E.screen_cols;
-        abAppend(ab, E.row.chars, len);
+        abAppend(ab, E.row[filerow].chars, len);
       }
       abAppend(ab, "\x1b[K", 3);//limpar uma linha
       if(y < E.screen_rows - 1){
@@ -268,6 +287,7 @@ void editorDrawRows(struct abuf *ab) {
 
   void editorRefreshScreen() {
 
+    editorScroll();
     struct abuf ab = ABUF_INIT;
 
     abAppend(&ab, "\x1b[?25l", 6);
@@ -351,6 +371,8 @@ void initEditor(){
   E.cx = 0;
   E.cy = 0;
   E.numrows = 0;
+  E.rowoff = 0;
+  E.row = NULL;
 
   if(getWindowSize(&E.screen_rows, &E.screen_cols) == -1){
     die("getWindowSize");
