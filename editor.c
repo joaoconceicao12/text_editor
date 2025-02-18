@@ -31,6 +31,7 @@ struct editorConfig{
   int cx, cy;
   int screen_rows;
   int screen_cols;
+  int coloff;
   int rowoff;
   struct termios orig_termios;
   int numrows;
@@ -274,9 +275,10 @@ void editorDrawRows(struct abuf *ab) {
           abAppend(ab, "~", 1);
         }
       }else{
-        int len = E.row[filerow].size;
+        int len = E.row[filerow].size - E.coloff;
+        if(len < 0) len = 0;
         if(len > E.screen_cols) len = E.screen_cols;
-        abAppend(ab, E.row[filerow].chars, len);
+        abAppend(ab, &E.row[filerow].chars[E.coloff], len);
       }
       abAppend(ab, "\x1b[K", 3);//limpar uma linha
       if(y < E.screen_rows - 1){
@@ -291,13 +293,12 @@ void editorDrawRows(struct abuf *ab) {
     struct abuf ab = ABUF_INIT;
 
     abAppend(&ab, "\x1b[?25l", 6);
-    //abAppend(&ab, "\x1b[2J", 4); //limpar ecra todo
     abAppend(&ab, "\x1b[H", 3); //reposicionar a esquerda e em cima (posição 0,0)
     
     editorDrawRows(&ab);
     
     char buf[32];
-    snprintf(buf, sizeof(buf), "\x1b[%d;%dH", E.cy + 1, E.cx + 1);
+    snprintf(buf, sizeof(buf), "\x1b[%d;%dH", (E.cy - E.rowoff) + 1, E.cx + 1);
     abAppend(&ab, buf, strlen(buf));
     abAppend(&ab, "\x1b[?25h", 6);
 
@@ -371,6 +372,7 @@ void initEditor(){
   E.cx = 0;
   E.cy = 0;
   E.numrows = 0;
+  E.coloff = 0;
   E.rowoff = 0;
   E.row = NULL;
 
