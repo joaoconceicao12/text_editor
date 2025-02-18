@@ -326,6 +326,9 @@ void editorMoveCursor(int key) {
       //De modo a impedir que o cursor fique numa coordenada negativa
       if(E.cx != 0){ 
         E.cx--;
+      }else if(E.cy > 0){
+        E.cy--;
+        E.cx = E.row[E.cy].size;
       }
       break;
     case ARROW_RIGHT:
@@ -336,6 +339,9 @@ void editorMoveCursor(int key) {
       */
       if(row && E.cx < row->size){
         E.cx++;
+      }else if(row && E.cx == row->size){
+        E.cy++;
+        E.cx = 0;
       }
       break;
     case ARROW_UP:
