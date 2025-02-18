@@ -252,6 +252,13 @@ void editorScroll(){
   if(E.cy >= E.rowoff + E.screen_rows){
     E.rowoff = E.cy - E.screen_rows + 1;
   }
+
+  if (E.cx < E.coloff) {
+    E.coloff = E.cx;
+  }
+  if (E.cx >= E.coloff + E.screen_cols) {
+    E.coloff = E.cx - E.screen_cols + 1;
+  }
 }
 
 void editorDrawRows(struct abuf *ab) {
@@ -298,7 +305,7 @@ void editorDrawRows(struct abuf *ab) {
     editorDrawRows(&ab);
     
     char buf[32];
-    snprintf(buf, sizeof(buf), "\x1b[%d;%dH", (E.cy - E.rowoff) + 1, E.cx + 1);
+    snprintf(buf, sizeof(buf), "\x1b[%d;%dH", (E.cy - E.rowoff) + 1, (E.cx - E.coloff) + 1);
     abAppend(&ab, buf, strlen(buf));
     abAppend(&ab, "\x1b[?25h", 6);
 
@@ -309,14 +316,25 @@ void editorDrawRows(struct abuf *ab) {
 /*** input ***/
 
 void editorMoveCursor(int key) {
+
+  erow *row = (E.cy >= E.numrows) ? NULL : &E.row[E.cy];
+  //Verifica se o cursor se encontra numa linha do ficheiro.
+  //Caso se verifique, row guarda o endereço dessa linha dentro da estrutura.
+
   switch (key) {
     case ARROW_LEFT:
+      //De modo a impedir que o cursor fique numa coordenada negativa
       if(E.cx != 0){ 
         E.cx--;
       }
       break;
     case ARROW_RIGHT:
-      if(E.cx != E.screen_cols - 1){
+      /* 
+      Só possibilita andar para a direita numa linha não vazia
+      Verifica se row contém o endereço de uma linha 
+      e se o cursor está dentro dos limites da linha
+      */
+      if(row && E.cx < row->size){
         E.cx++;
       }
       break;
@@ -330,6 +348,21 @@ void editorMoveCursor(int key) {
         E.cy++;
       }
       break;
+  }
+
+  /*
+  Caso passemos para uma linha vazia após termos estado no fim de uma linha longa, 
+  nesta nova linha vamos estar muito para a direita.
+  Assim caso passemos para uma linha vazia vamos atualizar o cursor no eixo horizontal
+  para a posição 0.
+  Só vamos atualizar a posição se estivermos o cursor estiver fora do valor da rowlen.
+  Se estivermos no meio de uma linha de codigo não se vai atualizar o valor E.cx.
+  */
+
+  row = (E.cy >= E.numrows) ? NULL : &E.row[E.cy];
+  int rowlen = row ? row->size : 0;
+  if (E.cx > rowlen) {
+    E.cx = rowlen;
   }
 }
 
