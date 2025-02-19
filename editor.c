@@ -446,10 +446,14 @@ void editorProcessKeypress() {
         exit(0);
         break;
       case HOME_KEY:
+        //Brings cursor to start of line
         E.cx = 0;
         break;
       case END_KEY:
-        E.cx = E.screen_cols - 1;
+        //Brings cursor to end of line
+        if(E.cy < E.numrows){
+          E.cx = E.row[E.cy].size;
+        }
         break;
       case ARROW_UP:
       case ARROW_DOWN:
@@ -459,7 +463,15 @@ void editorProcessKeypress() {
         break;
       case PAGE_UP:
       case PAGE_DOWN:
-        {
+        { 
+          if(c == PAGE_UP){
+            E.cy = E.rowoff;
+          }else if(c == PAGE_DOWN){
+            E.cy = E.rowoff + E.screen_rows - 1;
+            if(E.cy > E.numrows){
+              E.cy = E.numrows;
+            }
+          }
           int times = E.screen_rows;
           while (times--)
             editorMoveCursor(c == PAGE_UP ? ARROW_UP : ARROW_DOWN);
