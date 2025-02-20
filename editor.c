@@ -1,4 +1,5 @@
-/***includes ***/
+
+/*** includes ***/
 
 #define _DEFAULT_SOURCE
 #define _BSD_SOURCE
@@ -37,6 +38,7 @@ struct editorConfig{
   int coloff;
   int rowoff;
   struct termios orig_termios;
+  char* filename;
   int numrows;
   erow *row;
 };
@@ -209,6 +211,7 @@ void editorUpdateRow(erow *row){
   int j;
   for (j = 0; j < row->size; j++)
     if (row->chars[j] == '\t') tabs++;
+    
   free(row->render);
   row->render = malloc(row->size + tabs*(KILO_TAB_STOP - 1) + 1);
   int idx = 0;
@@ -244,6 +247,9 @@ void editorAppendRow(char *s, size_t len){
 /*** file i/o ***/
 
 void editorOpen(char *filename){
+  free(E.filename);
+  E.filename = strdup(filename);
+
   FILE *fp = fopen(filename, "r");
   if(!fp) die("fopen");
 
@@ -254,6 +260,7 @@ void editorOpen(char *filename){
     while(linelen > 0 && (line[linelen - 1] == '\n' || line[linelen - 1] == '\r')){
       linelen--;
     }
+    //printf("%s", line);
     editorAppendRow(line, linelen);
   }
   free(line);
@@ -351,10 +358,31 @@ void editorDrawRows(struct abuf *ab) {
         abAppend(ab, &E.row[filerow].render[E.coloff], len);
       }
       abAppend(ab, "\x1b[K", 3);//limpar uma linha
-      if(y < E.screen_rows - 1){
-        abAppend(ab, "\r\n", 2);
+      abAppend(ab, "\r\n", 2);
+    }
+  }
+
+
+  void editorDrawStatusBar(struct abuf *ab){
+    abAppend(ab, "\x1b[7m", 4); //the 7 makes the text in that line be printed in inverted
+    //colors
+    char status[80], rstatus[80];
+
+    int len = snprintf(status, sizeof(status), "%.20s - %d lines",
+    E.filename ? E.filename : "[No Name]", E.numrows);
+    int rlen = snprintf(rstatus, sizeof(rstatus), "%d/%d", E.cy + 1, E.numrows);
+    if(len > E.screen_cols) len = E.screen_cols;
+    abAppend(ab, status, len);
+    while(len < E.screen_cols){
+      if(E.screen_cols - len == rlen){
+        abAppend(ab, rstatus, rlen);
+        break;
+      }else{
+        abAppend(ab, " ", 1);
+        len++;
       }
     }
+    abAppend(ab, "\x1b[m", 3);
   }
 
   void editorRefreshScreen() {
@@ -362,15 +390,16 @@ void editorDrawRows(struct abuf *ab) {
     editorScroll();
     struct abuf ab = ABUF_INIT;
 
-    abAppend(&ab, "\x1b[?25l", 6);
-    abAppend(&ab, "\x1b[H", 3); //reposicionar a esquerda e em cima (posição 0,0)
+    abAppend(&ab, "\x1b[?25l", 6); //make cursor invisible
+    abAppend(&ab, "\x1b[H", 3); //reposition to the left and up (position 0,0)
     
     editorDrawRows(&ab);
+    editorDrawStatusBar(&ab);
     
     char buf[32];
     snprintf(buf, sizeof(buf), "\x1b[%d;%dH", (E.cy - E.rowoff) + 1, (E.rx - E.coloff) + 1);
     abAppend(&ab, buf, strlen(buf));
-    abAppend(&ab, "\x1b[?25h", 6);
+    abAppend(&ab, "\x1b[?25h", 6); //make cursor visible
 
     write(STDOUT_FILENO, ab.b, ab.len);
     abFree(&ab);
@@ -490,10 +519,12 @@ void initEditor(){
   E.coloff = 0;
   E.rowoff = 0;
   E.row = NULL;
+  E.filename =  NULL;
 
   if(getWindowSize(&E.screen_rows, &E.screen_cols) == -1){
     die("getWindowSize");
   }
+  E.screen_rows -= 1;
 }
 
 
