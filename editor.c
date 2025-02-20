@@ -11,6 +11,7 @@
 #include <termios.h>
 #include <time.h>
 #include <ctype.h>
+#include <fcntl.h>
 #include <stdarg.h>
 #include <string.h>
 #include <sys/ioctl.h>
@@ -270,6 +271,31 @@ void editorInsertChar(int c){
 
 /*** file i/o ***/
 
+char *editorRowsToString(int *buflen){
+  int totlen = 0;
+  int j;
+  for(j = 0; j < E.numrows; j++){
+    totlen += E.row[j].size + 1;
+  }
+  *buflen = totlen;
+
+  char *buf = malloc(totlen);
+  char *p = buf; // p stores the address of buf
+  for(j = 0; j < E.numrows; j++){
+    memcpy(p, E.row[j].chars, E.row[j].size);
+    p += E.row[j].size; // advances the pointer further in the string
+    *p = '\n';
+    p++;
+    //we do this so we can fill the buf with the whole file
+    //using p we can advance the pointer
+    //in the end we do not return p which is holds the address to the last char of the
+    //file stored in the buf string
+    //we return the buf address which points to the first char in the file
+  }
+  return buf;
+}
+
+
 void editorOpen(char *filename){
   free(E.filename);
   E.filename = strdup(filename);
@@ -284,12 +310,26 @@ void editorOpen(char *filename){
     while(linelen > 0 && (line[linelen - 1] == '\n' || line[linelen - 1] == '\r')){
       linelen--;
     }
-    //printf("%s", line);
     editorAppendRow(line, linelen);
   }
   free(line);
   fclose(fp);
 
+}
+
+void editorSave(){
+
+  if(E.filename == NULL) return;
+
+  int len;
+  char *buf = editorRowsToString(&len); //buf's malloc done in func
+
+  int fd = open(E.filename, O_RDWR | O_CREAT, 0644); //open for read-write or create
+  //0644 gives the owner perms to read and write while other can only read
+  ftruncate(fd, len);
+  write(fd, buf, len);
+  close(fd);
+  free(buf);
 }
 
 
@@ -516,15 +556,22 @@ void editorProcessKeypress() {
       case 'r':
         //TODO
         break;
+      
       case CTRL_KEY('q'):
         write(STDOUT_FILENO, "\x1b[2J", 4);
         write(STDOUT_FILENO, "\x1b[H", 3);
         exit(0);
         break;
+
+      case CTRL_KEY('s'):
+        editorSave();
+        break;
+
       case HOME_KEY:
         //Brings cursor to start of line
         E.cx = 0;
         break;
+
       case END_KEY:
         //Brings cursor to end of line
         if(E.cy < E.numrows){
@@ -564,6 +611,7 @@ void editorProcessKeypress() {
             editorMoveCursor(c == PAGE_UP ? ARROW_UP : ARROW_DOWN);
         }
         break;
+
       default:
         editorInsertChar(c);
         break;
