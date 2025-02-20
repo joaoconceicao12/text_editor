@@ -9,7 +9,9 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <termios.h>
+#include <time.h>
 #include <ctype.h>
+#include <stdarg.h>
 #include <string.h>
 #include <sys/ioctl.h>
 #include <sys/types.h>
@@ -39,6 +41,8 @@ struct editorConfig{
   int rowoff;
   struct termios orig_termios;
   char* filename;
+  char status_msg[80];
+  time_t status_msg_time;
   int numrows;
   erow *row;
 };
@@ -405,6 +409,14 @@ void editorDrawRows(struct abuf *ab) {
     abFree(&ab);
   }
 
+  void editorSetStatusMessage(const char* fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+    vsnprintf(E.status_msg, sizeof(E.status_msg), fmt, ap);
+    va_end(ap);
+    E.status_msg_time = time(NULL);
+  }
+
 /*** input ***/
 
 void editorMoveCursor(int key) {
@@ -520,6 +532,8 @@ void initEditor(){
   E.rowoff = 0;
   E.row = NULL;
   E.filename =  NULL;
+  E.status_msg[0] = '\0';
+  E.status_msg_time = 0;
 
   if(getWindowSize(&E.screen_rows, &E.screen_cols) == -1){
     die("getWindowSize");
@@ -535,6 +549,8 @@ int main(int argc, char* argv[]){
     if(argc >= 2){
       editorOpen(argv[1]);
     }
+
+    editorSetStatusMessage("HELP: Ctrl-Q = quit");
     
     while(1){
         editorRefreshScreen();
