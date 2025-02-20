@@ -59,6 +59,7 @@ struct abuf{
 #define ABUF_INIT {NULL,0}
 
 enum editorKey {
+  BACKSPACE = 127,
   ARROW_LEFT = 1000,
   ARROW_RIGHT,
   ARROW_UP,
@@ -260,7 +261,11 @@ void editorRowInsertChar(erow *row, int at, int c){
 /*** editor operations ***/
 
 void editorInsertChar(int c){
-  
+  if(E.cy == E.numrows){ //the cursor is on the tilde line after EOF
+    editorAppendRow("", 0); //we append a new line so we can write on it
+  }
+  editorRowInsertChar(&E.row[E.cy], E.cx, c);
+  E.cx++;
 }
 
 /*** file i/o ***/
@@ -508,6 +513,9 @@ void editorProcessKeypress() {
     int c = editorReadKey();
 
     switch (c) {
+      case 'r':
+        //TODO
+        break;
       case CTRL_KEY('q'):
         write(STDOUT_FILENO, "\x1b[2J", 4);
         write(STDOUT_FILENO, "\x1b[H", 3);
@@ -523,12 +531,23 @@ void editorProcessKeypress() {
           E.cx = E.row[E.cy].size;
         }
         break;
+      
+      case BACKSPACE:
+      case CTRL_KEY('h'):
+      case DEL_KEY:
+        //TODO
+        break;
       case ARROW_UP:
       case ARROW_DOWN:
       case ARROW_LEFT:
       case ARROW_RIGHT:
         editorMoveCursor(c);
         break;
+
+      case CTRL_KEY('l'):
+      case '\x1b':
+        break;
+
       case PAGE_UP:
       case PAGE_DOWN:
         { 
@@ -544,6 +563,9 @@ void editorProcessKeypress() {
           while (times--)
             editorMoveCursor(c == PAGE_UP ? ARROW_UP : ARROW_DOWN);
         }
+        break;
+      default:
+        editorInsertChar(c);
         break;
     }
   }
