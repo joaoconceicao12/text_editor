@@ -386,7 +386,18 @@ void editorDrawRows(struct abuf *ab) {
         len++;
       }
     }
-    abAppend(ab, "\x1b[m", 3);
+    abAppend(ab, "\x1b[m", 3);// makes the print colors go back to normal
+    abAppend(ab, "\r\n", 2); //creates a new line
+  }
+
+  void editorDrawMessageBar(struct abuf *ab){
+    abAppend(ab, "\x1b[K", 3); //clear the message bar
+    int msglen = strlen(E.status_msg);
+    if(msglen > E.screen_cols) msglen = E.screen_cols;
+    if(msglen && time(NULL) - E.status_msg_time < 5){ 
+      //only displays the message if is less than 5 seconds old
+      abAppend(ab, E.status_msg, msglen);
+    }
   }
 
   void editorRefreshScreen() {
@@ -399,6 +410,7 @@ void editorDrawRows(struct abuf *ab) {
     
     editorDrawRows(&ab);
     editorDrawStatusBar(&ab);
+    editorDrawMessageBar(&ab);
     
     char buf[32];
     snprintf(buf, sizeof(buf), "\x1b[%d;%dH", (E.cy - E.rowoff) + 1, (E.rx - E.coloff) + 1);
@@ -538,7 +550,7 @@ void initEditor(){
   if(getWindowSize(&E.screen_rows, &E.screen_cols) == -1){
     die("getWindowSize");
   }
-  E.screen_rows -= 1;
+  E.screen_rows -= 2;
 }
 
 
