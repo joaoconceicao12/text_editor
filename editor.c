@@ -80,15 +80,23 @@ void enableRawMode();
 int editorReadKey();
 void editorRefreshScreen();
 void editorDrawRows(struct abuf *ab);
+void editorDrawStatusBar(struct abuf *ab);
+void editorDrawMessageBar(struct abuf *ab);
+void editorSetStatusMessage(const char* fmt, ...);
 void editorProcessKeypress();
+void editorMoveCursor(int key);
 int getCursorPosition(int *rows, int *cols);
 int getWindowSize(int* rows, int* cols);
 void editorAppendRow(char *s, size_t len);
+void editorUpdateRow(erow *row);
+void editorRowInsertChar(erow *row, int at, int c);
+void editorInsertChar(int c);
+char *editorRowsToString(int *buflen);
 void editorOpen(char *filename);
+void editorSave();
 void abAppend(struct abuf *ab, const char *s, int len);
 void abFree(struct abuf *ab);
 void editorScroll();
-void editorMoveCursor(int key);
 void initEditor();
 
 /*** terminal ***/
@@ -326,10 +334,19 @@ void editorSave(){
 
   int fd = open(E.filename, O_RDWR | O_CREAT, 0644); //open for read-write or create
   //0644 gives the owner perms to read and write while other can only read
-  ftruncate(fd, len);
-  write(fd, buf, len);
-  close(fd);
+  if(fd != -1){
+    if(ftruncate(fd, len) != -1){
+      if(write(fd, buf, len) == len){
+        close(fd);
+        free(buf);
+        editorSetStatusMessage("%d bytes written to disk", len);
+        return;
+      }
+    }
+    close(fd);
+  }
   free(buf);
+  editorSetStatusMessage("Can't save! I/O error: %s", strerror(errno));
 }
 
 
@@ -647,7 +664,7 @@ int main(int argc, char* argv[]){
       editorOpen(argv[1]);
     }
 
-    editorSetStatusMessage("HELP: Ctrl-Q = quit");
+    editorSetStatusMessage("HELP: Ctrl-S = save | Ctrl-Q = quit");
     
     while(1){
         editorRefreshScreen();
