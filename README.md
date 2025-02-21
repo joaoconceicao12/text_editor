@@ -1,2 +1,6 @@
 # text_editor
-A simple text editor
+Text Editor by João Conceição
+
+Features :
+- File viewing and editing
+- 

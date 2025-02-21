@@ -230,6 +230,7 @@ void editorUpdateRow(erow *row){
     
   free(row->render);
   row->render = malloc(row->size + tabs*(KILO_TAB_STOP - 1) + 1);
+
   int idx = 0;
   for (j = 0; j < row->size; j++) {
     if (row->chars[j] == '\t') {
@@ -263,10 +264,21 @@ void editorAppendRow(char *s, size_t len){
 
 void editorRowInsertChar(erow *row, int at, int c){
   if(at < 0 || at > row->size) at = row->size;
+
   row->chars = realloc(row->chars, row->size + 2); //space for the new char and empty space
   memmove(&row->chars[at + 1], &row->chars[at],row->size - at + 1); //the one represents the new char
   row->size++;
   row->chars[at] = c;
+
+  editorUpdateRow(row);
+  E.dirty++;
+}
+
+void editorRowDelChar(erow *row, int at){
+  if(at < 0 || at >= row->size) return;
+
+  memmove(&row->chars[at], &row->chars[at + 1], row->size - at);
+  row->size--;
   editorUpdateRow(row);
   E.dirty++;
 }
@@ -274,11 +286,22 @@ void editorRowInsertChar(erow *row, int at, int c){
 /*** editor operations ***/
 
 void editorInsertChar(int c){
+  
   if(E.cy == E.numrows){ //the cursor is on the tilde line after EOF
     editorAppendRow("", 0); //we append a new line so we can write on it
   }
   editorRowInsertChar(&E.row[E.cy], E.cx, c);
   E.cx++;
+}
+
+void editorDelChar(){
+  if(E.cy == E.numrows) return; //In case the cursor is past EOF
+
+  erow *row = &E.row[E.cy];
+  if(E.cx > 0){ //In case the cursor is in the start of the line
+    editorRowDelChar(row, E.cx);
+    E.cx--;
+  }
 }
 
 /*** file i/o ***/
@@ -616,7 +639,8 @@ void editorProcessKeypress() {
       case BACKSPACE:
       case CTRL_KEY('h'):
       case DEL_KEY:
-        //TODO
+        if(c == DEL_KEY) editorMoveCursor(ARROW_RIGHT);
+        editorDelChar();
         break;
       case ARROW_UP:
       case ARROW_DOWN:
