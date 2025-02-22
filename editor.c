@@ -1,3 +1,4 @@
+
 /*** includes ***/
 
 #define _DEFAULT_SOURCE
@@ -265,7 +266,7 @@ void editorUpdateRow(erow *row){
 
 
 void editorInsertRow(int at, char *s, size_t len){
-  if(at < 0 || at >= E.numrows) return;
+  if(at < 0 || at > E.numrows) return;
   
   
   E.row = realloc(E.row, sizeof(erow) * (E.numrows + 1));
