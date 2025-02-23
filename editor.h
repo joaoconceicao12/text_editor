@@ -26,6 +26,7 @@
 #define KILO_VERSION "0.0.1"
 #define KILO_TAB_STOP 8
 #define KILO_QUIT_TIMES 3
+#define HLDB_ENTRIES (sizeof(HLDB) / sizeof(HLDB[0]))
 
 /*** data ***/
 
@@ -55,10 +56,10 @@ struct editorConfig {
   int dirty;
   char status_msg[80];
   time_t status_msg_time;
+  struct editorSyntax *syntax;
   int numrows;
   erow *row;
 };
-
 
 /*** append buffer ***/
 
