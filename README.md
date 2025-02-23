@@ -4,3 +4,5 @@ Text Editor by João Conceição
 Features :
 - File viewing and editing
 - Incremental search
+- Syntax highlighting
+- Filetype detection

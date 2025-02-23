@@ -88,10 +88,12 @@ enum editorKey {
 enum editorHighlight {
   HL_NORMAL = 0,
   HL_NUMBER,
-  HL_MATCH
+  HL_MATCH,
+  HL_STRING
 };
 
 #define HL_HIGHLIGHT_NUMBERS (1<<0)
+#define HL_HIGHLIGHT_STRINGS (1<<1)
 
 /*** function declarations ***/
 
