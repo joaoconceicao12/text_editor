@@ -33,6 +33,7 @@
 struct editorSyntax {
   char* filetype;
   char **filematch;
+  char **keywords;
   char *singleline_comment_start;
   int flags;
 };
@@ -90,6 +91,8 @@ enum editorHighlight {
   HL_NORMAL = 0,
   HL_NUMBER,
   HL_MATCH,
+  HL_KEYWORD1,
+  HL_KEYWORD2,
   HL_STRING,
   HL_COMMENT
 };
