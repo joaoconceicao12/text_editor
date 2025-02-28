@@ -35,15 +35,19 @@ struct editorSyntax {
   char **filematch;
   char **keywords;
   char *singleline_comment_start;
+  char *multiline_comment_start;
+  char *multiline_comment_end;
   int flags;
 };
 
 typedef struct erow {
+  int idx;
   int size;
   int rsize;
   char *chars;
   char* render;
   unsigned char* hl;
+  int hl_open_comment;
 } erow;
 
 struct editorConfig {
@@ -94,7 +98,8 @@ enum editorHighlight {
   HL_KEYWORD1,
   HL_KEYWORD2,
   HL_STRING,
-  HL_COMMENT
+  HL_COMMENT,
+  HL_MLCOMMENT
 };
 
 #define HL_HIGHLIGHT_NUMBERS (1<<0)
